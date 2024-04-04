@@ -1,0 +1,10 @@
+__pycache__
+*/__pycache__
+*/*/__pycache__
+
+# weight
+*.pth
+config/ckp/
+config/config/
+config/logs/
+/data
