@@ -7,4 +7,6 @@ __pycache__
 config/ckp/
 config/config/
 config/logs/
-/data
+
+
+data/3RScan

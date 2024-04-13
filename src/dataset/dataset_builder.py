@@ -19,6 +19,7 @@ def build_dataset(config, split_type, shuffle_objs, multi_rel_outputs,
         for_train=split_type == 'train_scans',
         max_edges = config.dataset.max_edges
     )
+    print(dataset)
     return dataset
 
 

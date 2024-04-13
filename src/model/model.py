@@ -14,7 +14,11 @@ from src.model.SGFN_MMG.model import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 
-
+import torch
+import torch.nn.utils.prune as prune
+from prettytable import PrettyTable
+import os
+from fvcore.nn import FlopCountAnalysis
 class MMGNet():
     def __init__(self, config):
         self.config = config
@@ -34,22 +38,32 @@ class MMGNet():
                                                use_normal=mconfig.USE_NORMAL)
             self.dataset_train.__getitem__(0)
                 
-        if config.MODE  == 'train' or config.MODE  == 'trace':
+        if config.MODE  == 'train' or config.MODE  == 'trace' or config.MODE == 'eval':
             if config.VERBOSE: print('build valid dataset')
             self.dataset_valid = build_dataset(self.config,split_type='validation_scans', shuffle_objs=False, 
                                       multi_rel_outputs=mconfig.multi_rel_outputs,
                                       use_rgb=mconfig.USE_RGB,
                                       use_normal=mconfig.USE_NORMAL)
             dataset = self.dataset_valid
+            
+        # SCY add code
+        if config.MODE  == 'train':
+            self.total = self.config.total = len(self.dataset_train) // self.config.Batch_Size
+            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_train) // self.config.Batch_Size)
+            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
+        elif config.MODE  == 'eval':
+            self.total = self.config.total = len(self.dataset_valid) // self.config.Batch_Size
+            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_valid) // self.config.Batch_Size)
+            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_valid) // self.config.Batch_Size)
 
         num_obj_class = len(self.dataset_valid.classNames)   
         num_rel_class = len(self.dataset_valid.relationNames)
         self.num_obj_class = num_obj_class
         self.num_rel_class = num_rel_class
         
-        self.total = self.config.total = len(self.dataset_train) // self.config.Batch_Size
-        self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_train) // self.config.Batch_Size)
-        self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
+        # self.total = self.config.total = len(self.dataset_train) // self.config.Batch_Size
+        # self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_train) // self.config.Batch_Size)
+        # self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
         
         ''' Build Model '''
         self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
@@ -80,10 +94,60 @@ class MMGNet():
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = \
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids
+    
+    # def print_parameters(model, title="Model Parameters"):
+    #     table = PrettyTable(["Layer", "Total Parameters"])
+    #     total_params = 0
+
+    #     for name, parameter in model.named_parameters():
+    #         if not parameter.requires_grad:
+    #             continue
+    #         param_total = parameter.numel()
+    #         if any(substring in name for substring in ['_orig', '_mask']):
+    #             continue
+    #         table.add_row([name, param_total])
+    #         total_params += param_total
+        
+    #     # print(title)
+    #     # print(table)
+    #     print(f"Total Parameters: {total_params}")
+    #     return total_params  
+    
+    # SCY Apply Global unstructured Pruning    
+    def apply_pruning(self, pruning_rate=0.5, save_path="pruning_mmg.txt"):
+        for name, module in self.model.named_modules():
+            if isinstance(module, torch.nn.Linear):
+                prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                prune.remove(module, 'weight') 
+
+        table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
+        total_params = total_non_zero = 0
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                num_params = param.numel()
+                non_zero_params = torch.count_nonzero(param).item()
+                sparsity = 100.0 * (1 - non_zero_params / num_params)
+                table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
+                total_params += num_params
+                total_non_zero += non_zero_params
+        total_sparsity = 100.0 * (1 - total_non_zero / total_params)
+        table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
+        
+        # SCY save file
+        base_path = ('/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/')
+        save_path = os.path.join(base_path, 'save_path.txt')
+        
+        with open(save_path, "w") as f:
+            f.write(str(table))
+
+        print(f"Success to save {save_path}")
+        # print(table)
           
     def train(self):
         ''' create data loader '''
         drop_last = True
+        # SCY apply unstructured pruning
+        self.apply_pruning(pruning_rate=0.7, save_path="pruning70_1.txt")
         train_loader = CustomDataLoader(
             config = self.config,
             dataset=self.dataset_train,
@@ -148,7 +212,7 @@ class MMGNet():
             loader = iter(train_loader)
             self.save()
 
-            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
+            if (self.model.epoch > 30 and 'VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
                 print('start validation...')
                 rel_acc_val = self.validation()
                 self.model.eva_res = rel_acc_val
@@ -164,6 +228,24 @@ class MMGNet():
             #         p.data.copy_(self.model.state_dict()[k])
             #     model_pre.model_pre = None
             #     self.model.update_model_pre(model_pre)
+    def calc_FLOPs(self):
+        drop_last = True
+        sample_loader = CustomDataLoader(
+            config = self.config,
+            dataset=self.dataset_valid,
+            batch_size=16,
+            num_workers=0,
+            drop_last=drop_last,
+            shuffle=True,
+            collate_fn=collate_fn_mmg,
+        )
+        #print(self.dataset_train[0][0].unsqueeze(0).shape)
+        loader = iter(sample_loader)
+        item = next(loader)
+        obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(item)
+        inputs = (obj_points, obj_2d_feats, edge_indices, descriptor, batch_ids, False)
+        #kwargs = {'descriptor': descriptor, 'batch_ids':batch_ids,'istrain': False}
+        return FlopCountAnalysis(self.model, inputs)
                    
     def cuda(self, *args):
         return [item.to(self.config.DEVICE) for item in args]
@@ -182,7 +264,7 @@ class MMGNet():
         val_loader = CustomDataLoader(
             config = self.config,
             dataset=self.dataset_valid,
-            batch_size=1,
+            batch_size=16,
             num_workers=self.config.WORKERS,
             drop_last=False,
             shuffle=False,
@@ -287,37 +369,37 @@ class MMGNet():
 
      
         print(f"Eval: 3d obj Acc@1  : {obj_acc_1}", file=f_in)   
-        print(f"Eval: 2d obj Acc@1: {obj_acc_2d_1}", file=f_in)
+        # print(f"Eval: 2d obj Acc@1: {obj_acc_2d_1}", file=f_in)
         print(f"Eval: 3d obj Acc@5  : {obj_acc_5}", file=f_in) 
-        print(f"Eval: 2d obj Acc@5: {obj_acc_2d_5}", file=f_in)  
+        # print(f"Eval: 2d obj Acc@5: {obj_acc_2d_5}", file=f_in)  
         print(f"Eval: 3d obj Acc@10 : {obj_acc_10}", file=f_in)  
-        print(f"Eval: 2d obj Acc@10: {obj_acc_2d_10}", file=f_in)
+        # print(f"Eval: 2d obj Acc@10: {obj_acc_2d_10}", file=f_in)
         print(f"Eval: 3d rel Acc@1  : {rel_acc_1}", file=f_in) 
-        print(f"Eval: 3d mean rel Acc@1  : {rel_acc_mean_1}", file=f_in)   
-        print(f"Eval: 2d rel Acc@1: {rel_acc_2d_1}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@1: {rel_acc_2d_mean_1}", file=f_in)
+        # print(f"Eval: 3d mean rel Acc@1  : {rel_acc_mean_1}", file=f_in)   
+        # print(f"Eval: 2d rel Acc@1: {rel_acc_2d_1}", file=f_in)
+        # print(f"Eval: 2d mean rel Acc@1: {rel_acc_2d_mean_1}", file=f_in)
         print(f"Eval: 3d rel Acc@3  : {rel_acc_3}", file=f_in)   
-        print(f"Eval: 3d mean rel Acc@3  : {rel_acc_mean_3}", file=f_in) 
-        print(f"Eval: 2d rel Acc@3: {rel_acc_2d_3}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@3: {rel_acc_2d_mean_3}", file=f_in)
+        # print(f"Eval: 3d mean rel Acc@3  : {rel_acc_mean_3}", file=f_in) 
+        # print(f"Eval: 2d rel Acc@3: {rel_acc_2d_3}", file=f_in)
+        # print(f"Eval: 2d mean rel Acc@3: {rel_acc_2d_mean_3}", file=f_in)
         print(f"Eval: 3d rel Acc@5  : {rel_acc_5}", file=f_in)
-        print(f"Eval: 3d mean rel Acc@5  : {rel_acc_mean_5}", file=f_in) 
-        print(f"Eval: 2d rel Acc@5: {rel_acc_2d_5}", file=f_in)
-        print(f"Eval: 2d mean rel Acc@5: {rel_acc_2d_mean_5}", file=f_in)
+        # print(f"Eval: 3d mean rel Acc@5  : {rel_acc_mean_5}", file=f_in) 
+        # print(f"Eval: 2d rel Acc@5: {rel_acc_2d_5}", file=f_in)
+        # print(f"Eval: 2d mean rel Acc@5: {rel_acc_2d_mean_5}", file=f_in)
         print(f"Eval: 3d triplet Acc@50 : {triplet_acc_50}", file=f_in)
-        print(f"Eval: 2d triplet Acc@50: {triplet_acc_2d_50}", file=f_in)
+        # print(f"Eval: 2d triplet Acc@50: {triplet_acc_2d_50}", file=f_in)
         print(f"Eval: 3d triplet Acc@100 : {triplet_acc_100}", file=f_in)
-        print(f"Eval: 2d triplet Acc@100: {triplet_acc_2d_100}", file=f_in)
-        print(f"Eval: 3d mean recall@50 : {mean_recall[0]}", file=f_in)
-        print(f"Eval: 2d mean recall@50: {mean_recall_2d[0]}", file=f_in)
-        print(f"Eval: 3d mean recall@100 : {mean_recall[1]}", file=f_in)
-        print(f"Eval: 2d mean recall@100: {mean_recall_2d[1]}", file=f_in)
-        print(f"Eval: 3d zero-shot recall@50 : {zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d zero-shot recall@100: {zero_shot_recall[1]}", file=f_in)
-        print(f"Eval: 3d non-zero-shot recall@50 : {non_zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d non-zero-shot recall@100: {non_zero_shot_recall[1]}", file=f_in)
-        print(f"Eval: 3d all-zero-shot recall@50 : {all_zero_shot_recall[0]}", file=f_in)
-        print(f"Eval: 3d all-zero-shot recall@100: {all_zero_shot_recall[1]}", file=f_in)
+        # print(f"Eval: 2d triplet Acc@100: {triplet_acc_2d_100}", file=f_in)
+        # print(f"Eval: 3d mean recall@50 : {mean_recall[0]}", file=f_in)
+        # print(f"Eval: 2d mean recall@50: {mean_recall_2d[0]}", file=f_in)
+        # print(f"Eval: 3d mean recall@100 : {mean_recall[1]}", file=f_in)
+        # print(f"Eval: 2d mean recall@100: {mean_recall_2d[1]}", file=f_in)
+        # print(f"Eval: 3d zero-shot recall@50 : {zero_shot_recall[0]}", file=f_in)
+        # print(f"Eval: 3d zero-shot recall@100: {zero_shot_recall[1]}", file=f_in)
+        # print(f"Eval: 3d non-zero-shot recall@50 : {non_zero_shot_recall[0]}", file=f_in)
+        # print(f"Eval: 3d non-zero-shot recall@100: {non_zero_shot_recall[1]}", file=f_in)
+        # print(f"Eval: 3d all-zero-shot recall@50 : {all_zero_shot_recall[0]}", file=f_in)
+        # print(f"Eval: 3d all-zero-shot recall@100: {all_zero_shot_recall[1]}", file=f_in)
 
 
 

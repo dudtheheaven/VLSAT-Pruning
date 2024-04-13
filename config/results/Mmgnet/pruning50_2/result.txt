@@ -1,0 +1,32 @@
+Eval: 3d obj Acc@1  : 55.806111696522656
+Eval: 2d obj Acc@1: 67.8609062170706
+Eval: 3d obj Acc@5  : 79.22023182297156
+Eval: 2d obj Acc@5: 87.18651211801897
+Eval: 3d obj Acc@10 : 87.35511064278188
+Eval: 2d obj Acc@10: 92.3076923076923
+Eval: 3d rel Acc@1  : 88.44132665708194
+Eval: 3d mean rel Acc@1  : 47.93652862177581
+Eval: 2d rel Acc@1: 90.82098061573546
+Eval: 2d mean rel Acc@1: 50.791931850971004
+Eval: 3d rel Acc@3  : 98.26979326756233
+Eval: 3d mean rel Acc@3  : 69.56333914139617
+Eval: 2d rel Acc@3: 98.39125477170195
+Eval: 2d mean rel Acc@3: 72.15479009818299
+Eval: 3d rel Acc@5  : 99.35303157999108
+Eval: 3d mean rel Acc@5  : 79.35407228122973
+Eval: 2d rel Acc@5: 99.41500173516434
+Eval: 2d mean rel Acc@5: 83.72516079606405
+Eval: 3d triplet Acc@50 : 89.94100441227505
+Eval: 2d triplet Acc@50: 93.54518863715235
+Eval: 3d triplet Acc@100 : 92.5016112240345
+Eval: 2d triplet Acc@100: 95.61499181993952
+Eval: 3d mean recall@50 : 56.69187545776367
+Eval: 2d mean recall@50: 74.38902282714844
+Eval: 3d mean recall@100 : 65.55529022216797
+Eval: 2d mean recall@100: 81.14739227294922
+Eval: 3d zero-shot recall@50 : 24.54945935122147
+Eval: 3d zero-shot recall@100: 40.40849018822587
+Eval: 3d non-zero-shot recall@50 : 75.14292247884747
+Eval: 3d non-zero-shot recall@100: 82.4262520009147
+Eval: 3d all-zero-shot recall@50 : 63.90643066797118
+Eval: 3d all-zero-shot recall@100: 73.0943698301165
