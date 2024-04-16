@@ -96,111 +96,105 @@ class MMGNet():
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids 
     
     # SCY Apply Global unstructured Pruning in Encoder
-    # def apply_pruning(self, pruning_rate, apply_part):
+    def apply_pruning(self, pruning_rate, apply_part):
         
-    #     if apply_part == "encoder":
-    #         encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
-    #         for encoder_name in encoders:
-    #             print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
-    #             for name, module in getattr(self.model, encoder_name).named_modules():
-    #                 if isinstance(module, torch.nn.Conv1d):
-    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-    #                     prune.remove(module, 'weight')
+        if apply_part == "encoder":
+            encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
+            for encoder_name in encoders:
+                print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
+                for name, module in getattr(self.model, encoder_name).named_modules():
+                    if isinstance(module, torch.nn.Conv1d):
+                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                        prune.remove(module, 'weight')
                     
-    #     elif apply_part == "gnn":
-    #         print("gnn pruning start")
-    #         gnn_name = 'mmg'
-    #         print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
-    #         for name, module in getattr(self.model, gnn_name).named_modules():
-    #             if isinstance(module, torch.nn.Linear):
-    #                 prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-    #                 prune.remove(module, 'weight')  
+        elif apply_part == "gnn":
+            print("gnn pruning start")
+            gnn_name = 'mmg'
+            print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
+            for name, module in getattr(self.model, gnn_name).named_modules():
+                if isinstance(module, torch.nn.Linear):
+                    prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                    prune.remove(module, 'weight')  
                      
-    #     elif apply_part == "classifier":
-    #         print("classifier pruning start")
-    #         classifiers = ['obj_predictor_3d', 'rel_predictor_3d', 'obj_predictor_2d', 'rel_predictor_2d']  
-    #         for predicator in classifiers:
-    #             for name, module in getattr(self.model, predicator).named_modules():
-    #                 if isinstance(module, torch.nn.Linear): 
-    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-    #                     prune.remove(module, 'weight')
-    #     else:
-    #         print("pruning error!")
-    #     print(f"{apply_part} pruning success!")
-        
-        
-                
+        elif apply_part == "classifier":
+            print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
+            classifiers = ['obj_predictor_3d', 'rel_predictor_3d', 'obj_predictor_2d', 'rel_predictor_2d']  
+            for predicator in classifiers:
+                for name, module in getattr(self.model, predicator).named_modules():
+                    if isinstance(module, torch.nn.Linear): 
+                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                        prune.remove(module, 'weight')
+        else:
+            print("pruning error!")
+        print(f"{apply_part} pruning success!")               
 
-    # def calculate_sparsity(self, save_path):
-    #     # visualize via table
-    #     table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
-    #     total_params = total_non_zero = 0
-    #     for name, param in self.model.named_parameters():
-    #         if param.requires_grad:
-    #             num_params = param.numel()
-    #             if name.endswith('weight'):
-    #                 non_zero_params = torch.count_nonzero(param).item()
-    #             else:
-    #                 non_zero_params = num_params
-    #             sparsity = 100.0 * (1 - non_zero_params / num_params)
-    #             table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
-    #             total_params += num_params
-    #             total_non_zero += non_zero_params
-    #     total_sparsity = 100.0 * (1 - total_non_zero / total_params)
-    #     table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
-    #     # save
-    #     save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
-    #     with open(save_path, "w") as f:
-    #         f.write(str(table))
-
-    #     print(f"save_path: {save_path}")
-        
-
-    # def save_pruning_results(self, results, name="classifier30.txt"):
-    #     base_path = '/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/'
-    #     save_path = os.path.join(base_path, name)
-        
-    #     with open(save_path, "w") as f:
-    #         for result in results:
-    #             f.write(str(result))
- 
-    #     print(f"Pruning results saved to {save_path}")
-
- # SCY Apply Global unstructured Pruning    
-    def apply_pruning_origin(self, pruning_rate, save_path):
-        # pruning
-        for name, module in self.model.named_modules():
-            if isinstance(module, torch.nn.Linear):
-                prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-                prune.remove(module, 'weight') 
-        
+    def calculate_sparsity(self, save_path):
         # visualize via table
         table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
         total_params = total_non_zero = 0
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 num_params = param.numel()
-                non_zero_params = torch.count_nonzero(param).item()
+                if name.endswith('weight'):
+                    non_zero_params = torch.count_nonzero(param).item()
+                else:
+                    non_zero_params = num_params
                 sparsity = 100.0 * (1 - non_zero_params / num_params)
                 table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
                 total_params += num_params
                 total_non_zero += non_zero_params
         total_sparsity = 100.0 * (1 - total_non_zero / total_params)
         table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
-        
-        #ave
+        # save
         save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
         with open(save_path, "w") as f:
             f.write(str(table))
 
         print(f"save_path: {save_path}")
+        
+    def save_pruning_results(self, results, name="classifier30.txt"):
+        base_path = '/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/'
+        save_path = os.path.join(base_path, name)
+        
+        with open(save_path, "w") as f:
+            for result in results:
+                f.write(str(result))
+ 
+        print(f"Pruning results saved to {save_path}")
+
+ # SCY Apply Global unstructured Pruning    
+    # def apply_pruning_origin(self, pruning_rate, save_path):
+    #     # pruning
+    #     for name, module in self.model.named_modules():
+    #         if isinstance(module, torch.nn.Linear):
+    #             prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #             prune.remove(module, 'weight') 
+        
+    #     # visualize via table
+    #     table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
+    #     total_params = total_non_zero = 0
+    #     for name, param in self.model.named_parameters():
+    #         if param.requires_grad:
+    #             num_params = param.numel()
+    #             non_zero_params = torch.count_nonzero(param).item()
+    #             sparsity = 100.0 * (1 - non_zero_params / num_params)
+    #             table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
+    #             total_params += num_params
+    #             total_non_zero += non_zero_params
+    #     total_sparsity = 100.0 * (1 - total_non_zero / total_params)
+    #     table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
+        
+    #     #ave
+    #     save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
+    #     with open(save_path, "w") as f:
+    #         f.write(str(table))
+
+    #     print(f"save_path: {save_path}")
     
         
     def train(self):
         ''' create data loader '''
         drop_last = True
-        # results = self.classifier_pruning(pruning_rate=0.3)
-        # self.save_pruning_results(results, "classifier30.txt")
         train_loader = CustomDataLoader(
             config = self.config,
             dataset=self.dataset_train,

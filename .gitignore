@@ -10,6 +10,6 @@ config/logs/
 
 
 data/3RScan
-pruning_ratio/
+config/pruning_ratio/
 
 *.ipynb

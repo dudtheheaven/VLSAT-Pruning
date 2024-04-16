@@ -4,6 +4,7 @@
   "NAME": "Mmgnet",
   "PATH": "/home/knuvi/Desktop/song/VLSAT-Pruning/config/",
   "multi_view_root": "/home/knuvi/Desktop/song/VLSAT-Pruning/",
+  "pruning_ratio": 0.5,
   "VERBOSE": false,
   "SEED": 2020,
   "MAX_EPOCHES":70, 
