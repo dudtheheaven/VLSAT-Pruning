@@ -14,11 +14,10 @@ from src.model.SGFN_MMG.model import Mmgnet
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 
-import torch
 import torch.nn.utils.prune as prune
 from prettytable import PrettyTable
-import os
-from fvcore.nn import FlopCountAnalysis
+# from fvcore.nn import FlopCountAnalysis
+
 class MMGNet():
     def __init__(self, config):
         self.config = config
@@ -27,6 +26,7 @@ class MMGNet():
         self.exp = config.exp
         self.save_res = config.EVAL
         self.update_2d = config.update_2d
+        self.pruning_ratio = config.pruning_ratio
         
         ''' Build dataset '''
         dataset = None
@@ -48,9 +48,9 @@ class MMGNet():
             
         # SCY add code
         if config.MODE  == 'train':
-            self.total = self.config.total = len(self.dataset_train) // self.config.Batch_Size
-            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_train) // self.config.Batch_Size)
-            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
+            self.total = self.config.total = len(self.dataset_valid) // self.config.Batch_Size
+            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_valid) // self.config.Batch_Size)
+            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_valid) // self.config.Batch_Size)
         elif config.MODE  == 'eval':
             self.total = self.config.total = len(self.dataset_valid) // self.config.Batch_Size
             self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_valid) // self.config.Batch_Size)
@@ -93,33 +93,88 @@ class MMGNet():
         obj_points = obj_points.permute(0,2,1).contiguous()
         obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = \
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
-        return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids
+        return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids 
     
-    # def print_parameters(model, title="Model Parameters"):
-    #     table = PrettyTable(["Layer", "Total Parameters"])
-    #     total_params = 0
-
-    #     for name, parameter in model.named_parameters():
-    #         if not parameter.requires_grad:
-    #             continue
-    #         param_total = parameter.numel()
-    #         if any(substring in name for substring in ['_orig', '_mask']):
-    #             continue
-    #         table.add_row([name, param_total])
-    #         total_params += param_total
+    # SCY Apply Global unstructured Pruning in Encoder
+    # def apply_pruning(self, pruning_rate, apply_part):
         
-    #     # print(title)
-    #     # print(table)
-    #     print(f"Total Parameters: {total_params}")
-    #     return total_params  
-    
-    # SCY Apply Global unstructured Pruning    
-    def apply_pruning(self, pruning_rate=0.5, save_path="pruning_mmg.txt"):
+    #     if apply_part == "encoder":
+    #         encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
+    #         for encoder_name in encoders:
+    #             print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
+    #             for name, module in getattr(self.model, encoder_name).named_modules():
+    #                 if isinstance(module, torch.nn.Conv1d):
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+                    
+    #     elif apply_part == "gnn":
+    #         print("gnn pruning start")
+    #         gnn_name = 'mmg'
+    #         print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
+    #         for name, module in getattr(self.model, gnn_name).named_modules():
+    #             if isinstance(module, torch.nn.Linear):
+    #                 prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                 prune.remove(module, 'weight')  
+                     
+    #     elif apply_part == "classifier":
+    #         print("classifier pruning start")
+    #         classifiers = ['obj_predictor_3d', 'rel_predictor_3d', 'obj_predictor_2d', 'rel_predictor_2d']  
+    #         for predicator in classifiers:
+    #             for name, module in getattr(self.model, predicator).named_modules():
+    #                 if isinstance(module, torch.nn.Linear): 
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+    #     else:
+    #         print("pruning error!")
+    #     print(f"{apply_part} pruning success!")
+        
+        
+                
+
+    # def calculate_sparsity(self, save_path):
+    #     # visualize via table
+    #     table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
+    #     total_params = total_non_zero = 0
+    #     for name, param in self.model.named_parameters():
+    #         if param.requires_grad:
+    #             num_params = param.numel()
+    #             if name.endswith('weight'):
+    #                 non_zero_params = torch.count_nonzero(param).item()
+    #             else:
+    #                 non_zero_params = num_params
+    #             sparsity = 100.0 * (1 - non_zero_params / num_params)
+    #             table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
+    #             total_params += num_params
+    #             total_non_zero += non_zero_params
+    #     total_sparsity = 100.0 * (1 - total_non_zero / total_params)
+    #     table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
+    #     # save
+    #     save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
+    #     with open(save_path, "w") as f:
+    #         f.write(str(table))
+
+    #     print(f"save_path: {save_path}")
+        
+
+    # def save_pruning_results(self, results, name="classifier30.txt"):
+    #     base_path = '/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/'
+    #     save_path = os.path.join(base_path, name)
+        
+    #     with open(save_path, "w") as f:
+    #         for result in results:
+    #             f.write(str(result))
+ 
+    #     print(f"Pruning results saved to {save_path}")
+
+ # SCY Apply Global unstructured Pruning    
+    def apply_pruning_origin(self, pruning_rate, save_path):
+        # pruning
         for name, module in self.model.named_modules():
             if isinstance(module, torch.nn.Linear):
                 prune.l1_unstructured(module, name='weight', amount=pruning_rate)
                 prune.remove(module, 'weight') 
-
+        
+        # visualize via table
         table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
         total_params = total_non_zero = 0
         for name, param in self.model.named_parameters():
@@ -133,21 +188,19 @@ class MMGNet():
         total_sparsity = 100.0 * (1 - total_non_zero / total_params)
         table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
         
-        # SCY save file
-        base_path = ('/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/')
-        save_path = os.path.join(base_path, 'save_path.txt')
-        
+        #ave
+        save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
         with open(save_path, "w") as f:
             f.write(str(table))
 
-        print(f"Success to save {save_path}")
-        # print(table)
-          
+        print(f"save_path: {save_path}")
+    
+        
     def train(self):
         ''' create data loader '''
         drop_last = True
-        # SCY apply unstructured pruning
-        self.apply_pruning(pruning_rate=0.7, save_path="pruning70_1.txt")
+        # results = self.classifier_pruning(pruning_rate=0.3)
+        # self.save_pruning_results(results, "classifier30.txt")
         train_loader = CustomDataLoader(
             config = self.config,
             dataset=self.dataset_train,
@@ -173,9 +226,9 @@ class MMGNet():
         if self.mconfig.use_pretrain != "":
             self.model.load_pretrain_model(self.mconfig.use_pretrain, is_freeze=True)
         
-        for k, p in self.model.named_parameters():
-            if p.requires_grad:
-                print(f"Para {k} need grad")
+        # for k, p in self.model.named_parameters():
+        #     if p.requires_grad:
+        #         print(f"Para {k} need grad")
         ''' Train '''
         while(keep_training):
 
@@ -212,7 +265,7 @@ class MMGNet():
             loader = iter(train_loader)
             self.save()
 
-            if (self.model.epoch > 30 and 'VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
+            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
                 print('start validation...')
                 rel_acc_val = self.validation()
                 self.model.eva_res = rel_acc_val
@@ -228,24 +281,6 @@ class MMGNet():
             #         p.data.copy_(self.model.state_dict()[k])
             #     model_pre.model_pre = None
             #     self.model.update_model_pre(model_pre)
-    def calc_FLOPs(self):
-        drop_last = True
-        sample_loader = CustomDataLoader(
-            config = self.config,
-            dataset=self.dataset_valid,
-            batch_size=16,
-            num_workers=0,
-            drop_last=drop_last,
-            shuffle=True,
-            collate_fn=collate_fn_mmg,
-        )
-        #print(self.dataset_train[0][0].unsqueeze(0).shape)
-        loader = iter(sample_loader)
-        item = next(loader)
-        obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids = self.data_processing_train(item)
-        inputs = (obj_points, obj_2d_feats, edge_indices, descriptor, batch_ids, False)
-        #kwargs = {'descriptor': descriptor, 'batch_ids':batch_ids,'istrain': False}
-        return FlopCountAnalysis(self.model, inputs)
                    
     def cuda(self, *args):
         return [item.to(self.config.DEVICE) for item in args]

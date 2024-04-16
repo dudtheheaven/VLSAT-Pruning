@@ -46,9 +46,16 @@ def main():
         model.load()
     except:
         print('unable to load previous model.')
-        
-    flops = model.calc_FLOPs().total()
-    origin_flops = flops / 1e9
+    
+    
+    # model.apply_pruning(model.config.pruning_ratio, "encoder")
+    # model.apply_pruning(model.config.pruning_ratio, "gnn")
+    # model.apply_pruning(model.config.pruning_ratio, "classifier")
+    
+    
+    pruning_result = config.exp +'.txt'
+    model.apply_pruning_origin(model.config.pruning_ratio ,pruning_result)
+    #model.calculate_sparsity(pruning_result)
     
     print('\nstart training...\n')
     model.train()
@@ -57,38 +64,7 @@ def main():
     print('start validation...')
     model.load()
     model.validation()
-    
-    
-    flops = model.calc_FLOPs().total()
-    pruned_flops = flops / 1e9
-    pruned_para = count_parameters(model.model)
-    print(f"Pruning ratio: {config.pruning_pointnet.pruning_ratio}")
-    print(f"Origin paramters: {27162021} || FLOPs: {origin_flops:.4f} billion FLOPs")
-    print(f"After pruning paramters:  {pruned_para} || FLOPs: {pruned_flops:.4f} billion FLOPs")
-    print(f"Diff parameter: {27162021 - pruned_para} || FLOPs: {origin_flops-pruned_flops:.4f} billion FLOPs ")
-
-    save_path = os.path.join(config.PATH, "results", config.NAME, config.exp)
-    os.makedirs(save_path, exist_ok=True)
-    f_in = open(os.path.join(save_path, 'result_pruned.txt'), 'w')
-        
-    print(f"Pruning ratio: {config.pruning_pointnet.pruning_ratio}", file=f_in)
-    print(f"Origin paramters: 27162021 || FLOPs: {origin_flops:.4f} billion FLOPs", file=f_in)
-    print(f"After pruning paramters:  {pruned_para} || FLOPs: {pruned_flops:.4f} billion FLOPs", file=f_in)
-    print(f"Diff parameter: {27162021 - pruned_para} || FLOPs: {origin_flops-pruned_flops:.4f} billion FLOPs", file=f_in)
-    # print("Acc@1/obj_cls_acc: {:.4f} => {:.4f}".format(acc1_obj_cls_acc, pruned_acc1_obj_cls_acc), file=f_in)
-    # print("Acc@5/obj_cls_acc: {:.4f} => {:.4f}".format(acc5_obj_cls_acc, pruned_acc5_obj_cls_acc), file=f_in)
-    # print("Acc@10/obj_cls_acc: {:.4f} => {:.4f}".format(acc10_obj_cls_acc, pruned_acc10_obj_cls_acc), file=f_in)
-    # print("Acc@1/rel_cls_acc: {:.4f} => {:.4f}".format(acc1_rel_cls_acc, pruned_acc1_rel_cls_acc), file=f_in)
-    # print("Acc@3/rel_cls_acc: {:.4f} => {:.4f}".format(acc3_rel_cls_acc, pruned_acc3_rel_cls_acc), file=f_in)
-    # print("Acc@5/rel_cls_acc: {:.4f} => {:.4f}".format(acc5_rel_cls_acc, pruned_acc5_rel_cls_acc), file=f_in)
-    # print("Acc@50/triplet_acc: {:.4f} => {:.4f}".format(acc50_triplet_acc, pruned_acc50_triplet_acc), file=f_in)
-    # print("Acc@100/triplet_acc: {:.4f} => {:.4f}".format(acc100_triplet_acc, pruned_acc100_triplet_acc), file=f_in)
-    f_in.close()
-   
-def count_parameters(model):
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
-    
-       
+      
 def load_config():
     r"""loads model config
 
