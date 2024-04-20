@@ -1,5 +1,5 @@
-ROOT_PATH = '/home/knuvi/Desktop/song/VLSAT-Pruning/'
-DATA_PATH = '/home/knuvi/Desktop/song/VLSAT-Pruning/data/3RScan/'
+ROOT_PATH = '/home/knuvi/song/VLSAT-Pruning/'
+DATA_PATH = '/home/knuvi/song/VLSAT-Pruning/data/3RScan/'
 
 FILE_PATH = ROOT_PATH+'files/'
 Scan3RJson_PATH = FILE_PATH+'3RScan.json'

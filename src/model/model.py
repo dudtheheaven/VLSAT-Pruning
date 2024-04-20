@@ -153,7 +153,7 @@ class MMGNet():
         print(f"save_path: {save_path}")
         
     def save_pruning_results(self, results, name="classifier30.txt"):
-        base_path = '/home/knuvi/yeong/VLSAT-Pruning/pruning_ratio/'
+        base_path = '/home/knuvi/song/VLSAT-Pruning/pruning_ratio/'
         save_path = os.path.join(base_path, name)
         
         with open(save_path, "w") as f:
@@ -161,36 +161,6 @@ class MMGNet():
                 f.write(str(result))
  
         print(f"Pruning results saved to {save_path}")
-
- # SCY Apply Global unstructured Pruning    
-    # def apply_pruning_origin(self, pruning_rate, save_path):
-    #     # pruning
-    #     for name, module in self.model.named_modules():
-    #         if isinstance(module, torch.nn.Linear):
-    #             prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-    #             prune.remove(module, 'weight') 
-        
-    #     # visualize via table
-    #     table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
-    #     total_params = total_non_zero = 0
-    #     for name, param in self.model.named_parameters():
-    #         if param.requires_grad:
-    #             num_params = param.numel()
-    #             non_zero_params = torch.count_nonzero(param).item()
-    #             sparsity = 100.0 * (1 - non_zero_params / num_params)
-    #             table.add_row([name, num_params, non_zero_params, f"{sparsity:.2f}"])
-    #             total_params += num_params
-    #             total_non_zero += non_zero_params
-    #     total_sparsity = 100.0 * (1 - total_non_zero / total_params)
-    #     table.add_row(["Total", total_params, total_non_zero, f"{total_sparsity:.2f}"])
-        
-    #     #ave
-    #     save_path = os.path.join(self.config.PATH, 'pruning_ratio', save_path)
-    #     with open(save_path, "w") as f:
-    #         f.write(str(table))
-
-    #     print(f"save_path: {save_path}")
-    
         
     def train(self):
         ''' create data loader '''
@@ -259,7 +229,7 @@ class MMGNet():
             loader = iter(train_loader)
             self.save()
 
-            if ('VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
+            if (self.model.epoch > 20 and 'VALID_INTERVAL' in self.config and self.config.VALID_INTERVAL > 0 and self.model.epoch % self.config.VALID_INTERVAL == 0):
                 print('start validation...')
                 rel_acc_val = self.validation()
                 self.model.eva_res = rel_acc_val
