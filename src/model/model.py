@@ -10,7 +10,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 from src.dataset.DataLoader import (CustomDataLoader, collate_fn_mmg)
 from src.dataset.dataset_builder import build_dataset
+# SCY choose model
 from src.model.SGFN_MMG.model import Mmgnet
+from src.model.SGFN_MMG.baseline_sgfn import SGFN
+from src.model.SGFN_MMG.baseline_sgpn import SGPN
 from src.utils import op_utils
 from src.utils.eva_utils_acc import get_mean_recall, get_zero_shot_recall
 
@@ -66,7 +69,10 @@ class MMGNet():
         # self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
         
         ''' Build Model '''
-        self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        # self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        # SCY choose model
+        self.model = SGFN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        # self.model = SGPN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
         self.samples_path = os.path.join(config.PATH, self.model_name, self.exp,  'samples')
         self.results_path = os.path.join(config.PATH, self.model_name, self.exp, 'results')
         self.trace_path = os.path.join(config.PATH, self.model_name, self.exp, 'traced')
@@ -95,11 +101,44 @@ class MMGNet():
             self.cuda(obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids)
         return obj_points, obj_2d_feats, gt_class, gt_rel_cls, edge_indices, descriptor, batch_ids 
     
-    # SCY Apply Global unstructured Pruning in Encoder
+    # SCY Apply Global unstructured Pruning with MMG
+    # def apply_pruning(self, pruning_rate, apply_part):
+        
+    #     if apply_part == "encoder":
+    #         encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
+    #         for encoder_name in encoders:
+    #             print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
+    #             for name, module in getattr(self.model, encoder_name).named_modules():
+    #                 if isinstance(module, torch.nn.Conv1d):
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+                    
+    #     elif apply_part == "gnn":
+    #         print("gnn pruning start")
+    #         gnn_name = 'mmg'
+    #         print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
+    #         for name, module in getattr(self.model, gnn_name).named_modules():
+    #             if isinstance(module, torch.nn.Linear):
+    #                 prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                 prune.remove(module, 'weight')  
+                     
+    #     elif apply_part == "classifier":
+    #         print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
+    #         classifiers = ['obj_predictor_3d', 'rel_predictor_3d', 'obj_predictor_2d', 'rel_predictor_2d']  
+    #         for predicator in classifiers:
+    #             for name, module in getattr(self.model, predicator).named_modules():
+    #                 if isinstance(module, torch.nn.Linear): 
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+    #     else:
+    #         print("pruning error!")
+    #     print(f"{apply_part} pruning success!")               
+
+    # SCY Apply Global unstructured Pruning with SGFN
     def apply_pruning(self, pruning_rate, apply_part):
         
         if apply_part == "encoder":
-            encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
+            encoders = ['obj_encoder', 'rel_encoder']
             for encoder_name in encoders:
                 print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
                 for name, module in getattr(self.model, encoder_name).named_modules():
@@ -109,7 +148,7 @@ class MMGNet():
                     
         elif apply_part == "gnn":
             print("gnn pruning start")
-            gnn_name = 'mmg'
+            gnn_name = 'gcn'
             print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
             for name, module in getattr(self.model, gnn_name).named_modules():
                 if isinstance(module, torch.nn.Linear):
@@ -118,7 +157,7 @@ class MMGNet():
                      
         elif apply_part == "classifier":
             print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
-            classifiers = ['obj_predictor_3d', 'rel_predictor_3d', 'obj_predictor_2d', 'rel_predictor_2d']  
+            classifiers = ['obj_predictor', 'rel_predictor']  
             for predicator in classifiers:
                 for name, module in getattr(self.model, predicator).named_modules():
                     if isinstance(module, torch.nn.Linear): 
@@ -126,8 +165,42 @@ class MMGNet():
                         prune.remove(module, 'weight')
         else:
             print("pruning error!")
-        print(f"{apply_part} pruning success!")               
-
+        print(f"{apply_part} pruning success!")   
+        
+        
+    # SCY Apply Global unstructured Pruning with SGPN
+    def apply_pruning(self, pruning_rate, apply_part):
+        
+        if apply_part == "encoder":
+            encoders = ['obj_encoder', 'rel_encoder']
+            for encoder_name in encoders:
+                print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
+                for name, module in getattr(self.model, encoder_name).named_modules():
+                    if isinstance(module, torch.nn.Conv1d):
+                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                        prune.remove(module, 'weight')
+                    
+        elif apply_part == "gnn":
+            print("gnn pruning start")
+            gnn_name = 'gcn'
+            print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
+            for name, module in getattr(self.model, gnn_name).named_modules():
+                if isinstance(module, torch.nn.Linear):
+                    prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                    prune.remove(module, 'weight')  
+                     
+        elif apply_part == "classifier":
+            print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
+            classifiers = ['obj_predictor', 'rel_predictor']  
+            for predicator in classifiers:
+                for name, module in getattr(self.model, predicator).named_modules():
+                    if isinstance(module, torch.nn.Linear): 
+                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+                        prune.remove(module, 'weight')
+        else:
+            print("pruning error!")
+        print(f"{apply_part} pruning success!")  
+        
     def calculate_sparsity(self, save_path):
         # visualize via table
         table = PrettyTable(["Layer", "Total Parameters", "Non-zero Parameters", "Sparsity (%)"])
@@ -152,16 +225,7 @@ class MMGNet():
 
         print(f"save_path: {save_path}")
         
-    def save_pruning_results(self, results, name="classifier30.txt"):
-        base_path = '/home/knuvi/song/VLSAT-Pruning/pruning_ratio/'
-        save_path = os.path.join(base_path, name)
-        
-        with open(save_path, "w") as f:
-            for result in results:
-                f.write(str(result))
- 
-        print(f"Pruning results saved to {save_path}")
-        
+                
     def train(self):
         ''' create data loader '''
         drop_last = True

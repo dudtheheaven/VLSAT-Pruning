@@ -1,9 +1,9 @@
 {
   "_NAME": ["SGFN", "Mmgnet"],
-  "MODEL_PATH": "/home/knuvi/song/VLSAT-Pruning/src/model/model.py",
-  "NAME": "Mmgnet",
-  "PATH": "/home/knuvi/song/VLSAT-Pruning/config/",
-  "multi_view_root": "/home/knuvi/song/VLSAT-Pruning/",
+  "MODEL_PATH": "/home/knuvi/song/GNN-Pruning/src/model/model.py",
+  "NAME": "SGFN",
+  "PATH": "/home/knuvi/song/GNN-Pruning/config/",
+  "multi_view_root": "/home/knuvi/song/GNN-Pruning/",
   "pruning_ratio": 0.5,
   "VERBOSE": false,
   "SEED": 2020,
@@ -58,12 +58,12 @@
     "NUM_HEADS": 8,
     "use_pretrain":"",
     "use_descriptor": true,
-    "obj_label_path":"/home/knuvi/song/VLSAT-Pruning/data/3DSSG_subset/classes.txt",
-    "rel_label_path":"/home/knuvi/song/VLSAT-Pruning/data/3DSSG_subset/relations.txt",
-    "adapter_path":"/home/knuvi/song/VLSAT-Pruning/clip_adapter/checkpoint/origin_mean.pth"
+    "obj_label_path":"/home/knuvi/song/GNN-Pruning/data/3DSSG_subset/classes.txt",
+    "rel_label_path":"/home/knuvi/song/GNN-Pruning/data/3DSSG_subset/relations.txt",
+    "adapter_path":"/home/knuvi/song/GNN-Pruning/clip_adapter/checkpoint/origin_mean.pth"
   },
   "dataset": {
-    "root": "/home/knuvi/song/VLSAT-Pruning/data/3DSSG_subset",
+    "root": "/home/knuvi/song/GNN-Pruning/data/3DSSG_subset",
     "selection": "",
     "use_data_augmentation": false,
     "ignore_scannet_rel": true,

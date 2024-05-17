@@ -47,9 +47,10 @@ def main():
     except:
         print('unable to load previous model.')
     
+    
     # model.apply_pruning(model.config.pruning_ratio, "encoder")
-    # model.apply_pruning(model.config.pruning_ratio, "gnn")
-    model.apply_pruning(model.config.pruning_ratio, "classifier")
+    model.apply_pruning(model.config.pruning_ratio, "gnn")
+    # model.apply_pruning(model.config.pruning_ratio, "classifier")
     
     pruning_result = config.exp +'.txt'
     # model.apply_pruning_origin(model.config.pruning_ratio ,pruning_result)
