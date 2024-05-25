@@ -6,7 +6,7 @@ from src.model.model_utils.model_base import BaseModel
 from utils import op_utils
 from src.utils.eva_utils_acc import get_gt, evaluate_topk_object, evaluate_topk_predicate, evaluate_triplet_topk
 from src.model.model_utils.network_GNN import GraphEdgeAttenNetworkLayers
-from src.model.model_utils.network_PointNet import PointNetfeat, PointNetCls, PointNetRelCls, PointNetRelClsMulti
+from model.model_utils.network_PointNet import PointNetfeat, PointNetCls, PointNetRelCls, PointNetRelClsMulti
 
 class SGFN(BaseModel):
     """

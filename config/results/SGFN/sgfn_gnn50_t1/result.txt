@@ -1,0 +1,8 @@
+Eval: 3d obj Acc@1  : 48.97787144362487
+Eval: 3d obj Acc@5  : 71.31717597471022
+Eval: 3d obj Acc@10 : 80.59009483667018
+Eval: 3d rel Acc@1  : 82.89623717217788
+Eval: 3d rel Acc@3  : 95.24812850131377
+Eval: 3d rel Acc@5  : 98.43091567101284
+Eval: 3d triplet Acc@50 : 85.5906995191116
+Eval: 3d triplet Acc@100 : 88.42397501363344

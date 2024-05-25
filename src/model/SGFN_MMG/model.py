@@ -8,7 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from clip_adapter.model import AdapterModel
 from src.model.model_utils.model_base import BaseModel
 from src.model.model_utils.network_MMG import MMG
-from src.model.model_utils.network_PointNet import (PointNetfeat,
+from model.model_utils.network_PointNet import (PointNetfeat,
                                                     PointNetRelCls,
                                                     PointNetRelClsMulti)
 from src.utils.eva_utils_acc import (evaluate_topk_object,

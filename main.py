@@ -48,8 +48,18 @@ def main():
         print('unable to load previous model.')
     
     
+    if config.part == "all":
+        model.apply_pruning(model.config.pruning_ratio, "all")
+    elif config.part == "encoder":
+        model.apply_pruning(model.config.pruning_ratio, "encoder")
+    elif config.part == "gnn":
+        model.apply_pruning(model.config.pruning_ratio, "gnn")
+    elif config.part == "classifier":
+            model.apply_pruning(model.config.pruning_ratio, "classifier")
+    
+    # model.apply_pruning(model.config.pruning_ratio, "all")
     # model.apply_pruning(model.config.pruning_ratio, "encoder")
-    model.apply_pruning(model.config.pruning_ratio, "gnn")
+    # model.apply_pruning(model.config.pruning_ratio, "gnn")
     # model.apply_pruning(model.config.pruning_ratio, "classifier")
     
     pruning_result = config.exp +'.txt'
@@ -61,7 +71,7 @@ def main():
     # we test the best model in the end
     model.config.EVAL = True
     print('start validation...')
-    model.load()
+    model.load(best=True)
     model.validation()
       
 def load_config():
@@ -73,6 +83,7 @@ def load_config():
     parser.add_argument('--loadbest', type=int, default=0,choices=[0,1], help='1: load best model or 0: load checkpoints. Only works in non training mode.')
     parser.add_argument('--mode', type=str, choices=['train','trace','eval'], help='mode. can be [train,trace,eval]',required=True)
     parser.add_argument('--exp', type=str)
+    parser.add_argument('--part', type=str)
 
     args = parser.parse_args()
     config_path = os.path.abspath(args.config)
@@ -94,6 +105,7 @@ def load_config():
     config.LOADBEST = args.loadbest
     config.MODE = args.mode
     config.exp = args.exp
+    config.part = args.part
 
     return config
 

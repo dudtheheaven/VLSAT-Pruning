@@ -51,9 +51,9 @@ class MMGNet():
             
         # SCY add code
         if config.MODE  == 'train':
-            self.total = self.config.total = len(self.dataset_valid) // self.config.Batch_Size
-            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_valid) // self.config.Batch_Size)
-            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_valid) // self.config.Batch_Size)
+            self.total = self.config.total = len(self.dataset_train) // self.config.Batch_Size
+            self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_train) // self.config.Batch_Size)
+            self.max_iteration_scheduler = self.config.max_iteration_scheduler = int(float(100)*len(self.dataset_train) // self.config.Batch_Size)
         elif config.MODE  == 'eval':
             self.total = self.config.total = len(self.dataset_valid) // self.config.Batch_Size
             self.max_iteration = self.config.max_iteration = int(float(self.config.MAX_EPOCHES)*len(self.dataset_valid) // self.config.Batch_Size)
@@ -70,9 +70,10 @@ class MMGNet():
         
         ''' Build Model '''
         # self.model = Mmgnet(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        
         # SCY choose model
-        self.model = SGFN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
-        # self.model = SGPN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        # self.model = SGFN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
+        self.model = SGPN(self.config, num_obj_class, num_rel_class).to(config.DEVICE)
         self.samples_path = os.path.join(config.PATH, self.model_name, self.exp,  'samples')
         self.results_path = os.path.join(config.PATH, self.model_name, self.exp, 'results')
         self.trace_path = os.path.join(config.PATH, self.model_name, self.exp, 'traced')
@@ -103,6 +104,16 @@ class MMGNet():
     
     # SCY Apply Global unstructured Pruning with MMG
     # def apply_pruning(self, pruning_rate, apply_part):
+        
+    #     if apply_part == "all":
+    #         print("all pruning start")
+    #         for name, module in self.model.named_modules():
+    #             if isinstance(module, torch.nn.Linear):
+    #                 prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+    #                 prune.remove(module, 'weight') 
+    #             elif isinstance(module, torch.nn.Conv1d):
+    #                 prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+    #                 prune.remove(module, 'weight') 
         
     #     if apply_part == "encoder":
     #         encoders = ['obj_encoder', 'rel_encoder_2d', 'rel_encoder_3d']
@@ -137,8 +148,18 @@ class MMGNet():
     # SCY Apply Global unstructured Pruning with SGFN
     def apply_pruning(self, pruning_rate, apply_part):
         
+        if apply_part == "all":
+            print("all pruning start")
+            for name, module in self.model.named_modules():
+                if isinstance(module, torch.nn.Linear):
+                    prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+                    prune.remove(module, 'weight') 
+                elif isinstance(module, torch.nn.Conv1d):
+                    prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+                    prune.remove(module, 'weight') 
+        
         if apply_part == "encoder":
-            encoders = ['obj_encoder', 'rel_encoder']
+            encoders = ['obj_encoder']
             for encoder_name in encoders:
                 print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
                 for name, module in getattr(self.model, encoder_name).named_modules():
@@ -169,37 +190,47 @@ class MMGNet():
         
         
     # SCY Apply Global unstructured Pruning with SGPN
-    def apply_pruning(self, pruning_rate, apply_part):
+    # def apply_pruning(self, pruning_rate, apply_part):
         
-        if apply_part == "encoder":
-            encoders = ['obj_encoder', 'rel_encoder']
-            for encoder_name in encoders:
-                print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
-                for name, module in getattr(self.model, encoder_name).named_modules():
-                    if isinstance(module, torch.nn.Conv1d):
-                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-                        prune.remove(module, 'weight')
+    #     if apply_part == "all":
+    #         print("all pruning start")
+    #         for name, module in self.model.named_modules():
+    #             if isinstance(module, torch.nn.Linear):
+    #                 prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+    #                 prune.remove(module, 'weight') 
+    #             elif isinstance(module, torch.nn.Conv1d):
+    #                 prune.l1_unstructured(module, name='weight', amount=self.pruning_ratio)
+    #                 prune.remove(module, 'weight') 
                     
-        elif apply_part == "gnn":
-            print("gnn pruning start")
-            gnn_name = 'gcn'
-            print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
-            for name, module in getattr(self.model, gnn_name).named_modules():
-                if isinstance(module, torch.nn.Linear):
-                    prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-                    prune.remove(module, 'weight')  
+    #     if apply_part == "encoder":
+    #         encoders = ['obj_encoder']
+    #         for encoder_name in encoders:
+    #             print(f"encoder: {encoder_name} pruning:{pruning_rate} start!")
+    #             for name, module in getattr(self.model, encoder_name).named_modules():
+    #                 if isinstance(module, torch.nn.Conv1d):
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+                    
+    #     elif apply_part == "gnn":
+    #         print("gnn pruning start")
+    #         gnn_name = 'gcn'
+    #         print(f"gnn: {gnn_name} pruning:{pruning_rate} start!")
+    #         for name, module in getattr(self.model, gnn_name).named_modules():
+    #             if isinstance(module, torch.nn.Linear):
+    #                 prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                 prune.remove(module, 'weight')  
                      
-        elif apply_part == "classifier":
-            print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
-            classifiers = ['obj_predictor', 'rel_predictor']  
-            for predicator in classifiers:
-                for name, module in getattr(self.model, predicator).named_modules():
-                    if isinstance(module, torch.nn.Linear): 
-                        prune.l1_unstructured(module, name='weight', amount=pruning_rate)
-                        prune.remove(module, 'weight')
-        else:
-            print("pruning error!")
-        print(f"{apply_part} pruning success!")  
+    #     elif apply_part == "classifier":
+    #         print(f"classifier: {apply_part} pruning:{pruning_rate} start!")
+    #         classifiers = ['obj_predictor', 'rel_predictor']  
+    #         for predicator in classifiers:
+    #             for name, module in getattr(self.model, predicator).named_modules():
+    #                 if isinstance(module, torch.nn.Linear): 
+    #                     prune.l1_unstructured(module, name='weight', amount=pruning_rate)
+    #                     prune.remove(module, 'weight')
+    #     else:
+    #         print("pruning error!")
+    #     print(f"{apply_part} pruning success!")  
         
     def calculate_sparsity(self, save_path):
         # visualize via table
